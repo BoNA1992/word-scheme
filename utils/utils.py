@@ -3,99 +3,148 @@ import cv2
 from glob import glob
 import matplotlib.pyplot as plt
 import re 
+import os
+from utils.russian_alphabet import RussianAlphabet
+from utils.image_loader import ImageLoader
+
+loader = ImageLoader('./images')
+images = loader.load_images()
+
+# Доступ к изображениям
+blue_red = images['blue_red']
+green_red = images['green_red']
+blue = images['blue']
+red = images['red']
+green = images['green']
 
 
-consonant_letters = {'Б': 1041, 'В': 1042, 'Г': 1043, 'Д': 1044, 
-               'Ж': 1046, 'З': 1047, 'Й': 1049, 'К': 1050, 
-               'Л': 1051, 'М': 1052, 'Н': 1053, 'П': 1055, 
-               'Р': 1056, 'С': 1057, 'Т': 1058,'Ф': 1060, 
-               'Х': 1061, 'Ц': 1062, 'Ч': 1063, 'Ш': 1064, 
-               'Щ': 1065
-}
-
-vowel_letters = {'А': 1040, 'О': 1054, 'У': 1059, 'Ы': 1067, 'Э': 1069}
-
-vowel_letters_soft = {'Е': 1045, 'И': 1048, 'Ю': 1070, 'Я': 1071, 'Ё': 1025}
-
-hard_and_soft_sign = {'Ъ': 1066, 'Ь': 1068}
-
-blue_red = cv2.imread(glob('./images/blue_red.png')[0])
-green_red = cv2.imread(glob('./images/green_red.png')[0])
-blue = cv2.imread(glob('./images/blue.png')[0])
-red = cv2.imread(glob('./images/red.png')[0])
-green = cv2.imread(glob('./images/green.png')[0])
-
-blue_red = cv2.resize(blue_red, (250, 100))
-green_red = cv2.resize(green_red, (250, 100))
-blue = cv2.resize(blue, (100, 100))
-red = cv2.resize(red, (100, 100))
-green = cv2.resize(green, (100, 100))
+def create_folder(folder_path):
+    """
+    Создает папку по указанному пути относительно текущей директории
+    и возвращает полный абсолютный путь к созданной папке.
+    
+    Args:
+        folder_path (str): Путь к папке (например, "./result")
+    
+    Returns:
+        str: Абсолютный путь к созданной папке
+    """
+    # Получаем абсолютный путь
+    absolute_path = os.path.abspath(folder_path)
+    
+    # Создаем папку, если она не существует
+    if not os.path.exists(absolute_path):
+        os.makedirs(absolute_path)
+        # print(f"Папка '{absolute_path}' успешно создана")
+    # else:
+        # print(f"Папка '{absolute_path}' уже существует")
+    
+    return absolute_path
 
 
-def has_cyrillic(word):
-    return bool(re.search('[а-яА-Я]', word))
+def is_all_cyrillic(word: str):
+    """
+    Проверяет, состоит ли строка полностью из кириллических символов.
+    
+    Args:
+        text (str): Строка для проверки
+    
+    Returns:
+        bool: True если строка состоит только из кириллических символов, иначе False
+     """
+    if not word:  # Проверка на пустую строку
+        return False
+    
+    # Проверяем, что все символы соответствуют кириллическому диапазону
+    return bool(re.fullmatch(r'[а-яА-ЯёЁ]+', word))
 
 
 def get_word_scheme(word: str):
-    lst = []
+    """
+    Проходимся по слову и присваеваем метку букве:
+    0 - Ъ или Ь знак
+    1 - согласная буква - Б, В, Г, Д, З, К, Л, М, Н, П, Р, С, Т, Ф, Х
+    2 - согласные всегда мягкие - Й, Ч, Щ
+    3 - согласные всегда твердые - Ж, Ц, Ш
+    4 - гласные - А, О, У, Ы, Э
+    5 - гласные - Е, Ё, И, Ю, Я
+    """
+    result = []
     for i, letter in enumerate(word):
-        try:
-            if letter in hard_and_soft_sign.keys():
-                continue
-            elif letter in consonant_letters.keys() and word[i+1] in vowel_letters.keys():
-                if ord(letter) == 1063:
-                    lst.append(2)
-                elif ord(letter) in [1064, 1065] and ord(word[i+1]) == 1059:
-                    lst.append(2)
-                else:
-                    lst.append(0)
-            elif letter in consonant_letters.keys() and word[i+1] in vowel_letters_soft.keys():
-                if ord(letter) in [1046, 1062, 1064] and ord(word[i+1]) in [1045, 1048]:
-                    lst.append(0)
-                else: 
-                    lst.append(2)
-            elif letter in consonant_letters.keys() and word[i+1] in consonant_letters.keys():
-                lst.append(0)
-            elif letter not in consonant_letters.keys():
-                lst.append(1)
-            elif letter in consonant_letters.keys() and word[i+1] in hard_and_soft_sign.keys():
-                lst.append(0)
-        except:
-            if letter in consonant_letters.keys() and ord(letter) not in [1063, 1065]:
-                lst.append(0)
-            elif letter in vowel_letters.keys() or letter in vowel_letters_soft.keys():
-                lst.append(1)
-    result = get_image_scheme(scheme=lst)
+        if letter in RussianAlphabet.HARD_AND_SOFT_SIGN:
+            result.append(0)
+        elif letter in RussianAlphabet.CONSONANT_LETTERS:
+            result.append(1)
+        elif letter in RussianAlphabet.CONSONANT_LETTERS_SOFT:
+            result.append(2)
+        elif letter in RussianAlphabet.CONSONANT_LETTERS_HARD:
+            result.append(3)        
+        elif letter in RussianAlphabet.VOWEL_LETTERS:
+            result.append(4)        
+        elif letter in RussianAlphabet.VOWEL_LETTERS_SOFT:
+            result.append(5)  
+    result = get_image_scheme(scheme=result) 
     return result
 
+
 def get_image_scheme(scheme: list[int]):
+    """Проходимся по слову и присваеваем метку букве:
+    # 0 - Ъ или Ь знак
+    # 1 - согласная буква - Б, В, Г, Д, З, К, Л, М, Н, П, Р, С, Т, Ф, Х
+    # 2 - согласные всегда мягкие - Й, Ч, Щ
+    # 3 - согласные всегда твердые - Ж, Ц, Ш
+    # 4 - гласные - А, О, У, Ы, Э
+    # 5 - гласные - Е, Ё, И, Ю, Я
+    """
     img = []
+    skip_next = False
     for i, x in enumerate(scheme):
+        if skip_next or x == 0:
+            skip_next = False
+            continue
+        # print('i', i)
         try:
-            if x == 0 and scheme[i+1] == 1:
-                img.append(blue_red)
-            elif x == 2 and scheme[i+1] == 1:
-                img.append(green_red)
-            elif x == 1 and (scheme[i-1] == 0 or scheme[i-1] == 2):
-                if i-1 == -1:
-                    img.append(red)
-                else:
-                    continue
-            elif x == 0:
-                img.append(blue)
-            elif x == 2:
-                img.append(green)
-            elif x == 1 and i == len(scheme) - 1:
-                img.append(red)
-            elif x == 1:
-                img.append(red)
-        except:
             if x == 1:
+                if scheme[i+1] == 4:
+                    img.append(blue_red)
+                    skip_next = True
+                elif scheme[i+1] == 5:
+                    img.append(green_red)
+                    skip_next = True
+                elif scheme[i+1] in [0, 1, 2, 3]:
+                    img.append(blue)
+            elif x == 2:
+                if scheme[i+1] in [4, 5]:
+                    img.append(green_red)
+                    skip_next = True
+                elif scheme[i+1] in [0, 1, 2, 3]:
+                    img.append(green)
+            elif x == 3:
+                if scheme[i+1] in [4, 5]:
+                    img.append(blue_red)
+                    skip_next = True
+                elif scheme[i+1] in [0, 1, 2, 3]:
+                    img.append(blue)
+            elif x == 4:
                 img.append(red)
-            elif x == 0:
+            elif x == 5:
+                if i == 0 or scheme[i-1] in [0, 4, 5]:
+                    img.append(green_red)
+                else:
+                    img.append(red)
+        except:
+            if x == 0:
+                continue
+            if x == 1:
                 img.append(blue)
             elif x == 2:
                 img.append(green)
+            elif x == 3:
+                img.append(blue)
+            elif x == 4:
+                img.append(red)
+            # elif x == 5:
+            #     img.append(red)
     # соединить изображения по горизонтали
     result = cv2.hconcat(img)
     white_img = result * 0 + 255
@@ -106,27 +155,9 @@ def get_image_scheme(scheme: list[int]):
 
 def vis_image_scheme(word, image):
     plt.title(word.upper(), fontsize=50, pad=10)
-    plt.xlabel(str(image.shape[1]))
-    plt.ylabel(str(image.shape[0]))
-    # plt.annotate(text='', xy=(250, 100),  xycoords='data',
-    #         xytext=(250, 50), textcoords='data',
-    #         arrowprops=dict(facecolor='black', 
-    #                         arrowstyle="-", 
-    #                         connectionstyle="angle",
-    #         )
-    # )
-    # plt.annotate(text='', xy=(250, 190),  xycoords='data',
-    #         xytext=(250, 250), textcoords='data',
-    #         arrowprops=dict(facecolor='black', 
-    #                         arrowstyle="-", 
-    #                         connectionstyle="angle",
-    #         )
-    # )
-    # plt.annotate('min', xy=(250, 100),  xycoords='data',
-    #         xytext=(250, 50), textcoords='data',
-    #         arrowprops=dict(facecolor='black'))
+    plt.axis('off')
     plt.imshow(image)
+    plt.savefig(f"{create_folder("./result")}/{word}.png")
 
-# Отображаем график
-    # print(word)
+    # Отображаем график для Jupyter Notebook
     plt.show()

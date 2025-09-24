@@ -154,10 +154,66 @@ def get_image_scheme(scheme: list[int]):
     return result
 
 def vis_image_scheme(word, image):
+    save_path = f"{create_folder("./result")}/{word}.png"
     plt.title(word.upper(), fontsize=50, pad=10)
     plt.axis('off')
     plt.imshow(image)
-    plt.savefig(f"{create_folder("./result")}/{word}.png")
+    plt.savefig(save_path)
 
     # Отображаем график для Jupyter Notebook
     plt.show()
+    return save_path
+
+
+def load_dictionary(dictionary_path, encoding='windows-1251'):
+    """
+    Загружает словарь из файла в множество для многократного использования
+    
+    Args:
+        dictionary_path (str): Путь к файлу словаря
+        encoding (str): Кодировка файла
+    
+    Returns:
+        set: Множество слов из словаря или пустое множество при ошибке
+    """
+    try:
+        with open(dictionary_path, 'r', encoding=encoding) as file:
+            words = set()
+            for line in file:
+                word = line.strip().lower()
+                if word:  # Пропускаем пустые строки
+                    words.add(word)
+            return words
+    except FileNotFoundError:
+        print(f"Ошибка: Файл словаря '{dictionary_path}' не найден")
+        return set()
+    except Exception as e:
+        print(f"Ошибка при загрузке словаря: {e}")
+        return set()
+
+
+def process_word(word):
+    """Обрабатывает слово: создает схему и визуализирует ее"""
+    img = get_word_scheme(word.upper())
+    result = vis_image_scheme(word=word, image=img)
+    return result
+
+
+def validate_and_process_word(word, dictionary):
+    """Проверяет слово и обрабатывает его если оно корректно"""
+    # Проверка на выход
+    if word in 'QqЙй':
+        return "exit"
+    
+    # Проверка на корректность ввода
+    if not word.isalpha() or not is_all_cyrillic(word):
+        print(f'Слово должно состоять только из русских букв (без пробелов и знаков препинания), попробуй еще раз')
+        return "invalid"
+    
+    # Проверка наличия в словаре
+    if word.lower() in dictionary:
+        process_word(word)
+        return "processed"
+    else:
+        # print(f"Слово '{word}' не найдено в словаре.")
+        return "not_in_dict"

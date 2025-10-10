@@ -52,7 +52,7 @@ def is_all_cyrillic(word: str):
     Returns:
         bool: True если строка состоит только из кириллических символов, иначе False
      """
-    if not word:  # Проверка на пустую строку
+    if not word or len(word) == 1:  # Проверка на пустую строку
         return False
     
     # Проверяем, что все символы соответствуют кириллическому диапазону
@@ -154,9 +154,35 @@ def get_image_scheme(scheme: list[int]):
     return result
 
 def vis_image_scheme(word, image):
+    # Получаем размеры
+    height, width = image.shape[:2]
+    
+    # Настраиваем размер фигуры
+    dpi = 80  # можно регулировать для контроля размера отображения
+    fig_width = width / dpi
+    fig_height = height / dpi
+    
+    # Ограничиваем максимальный размер для удобства просмотра
+    max_size = 12  # дюймов
+    if fig_width > max_size or fig_height > max_size:
+        scale = max_size / max(fig_width, fig_height)
+        fig_width *= scale
+        fig_height *= scale
+        dpi = dpi * scale
+    
+    # Создаем и настраиваем график
+    fig, ax = plt.subplots(figsize=(fig_width, fig_height), dpi=dpi)
+
+    # plt.figure(figsize=(12, 4))
     save_path = f"{create_folder("./result")}/{word}.png"
-    plt.title(word.upper(), fontsize=50, pad=10)
-    plt.axis('off')
+    # plt.title(word.upper(), fontsize=50, pad=10)
+    ax.axis('off')
+    ax.set_title(word.upper(), fontsize=50, pad=5, y=0.8)
+    # Убираем отступы вокруг изображения
+    # Убираем белые поля
+    # plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
+    plt.tight_layout(pad=0)
+    # print('image.shape', image.shape)
     plt.imshow(image)
     plt.savefig(save_path)
 
